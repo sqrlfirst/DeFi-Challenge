@@ -15,7 +15,7 @@ ETHERSCAN_API_KEY = os.getenv('ETHERSCAN_API_KEY')
 
 # add your blockchain connection information
 events = []
-infura_url = 'https://sepolia.infura.io/v3/{INFURA_KEY}'
+infura_url = 'https://sepolia.infura.io/v3/' + INFURA_KEY
 w3 = Web3(Web3.HTTPProvider(infura_url))
 contract_address = Web3.to_checksum_address(AIRVAULT_ADDRESS)
 etherscan_url = f'https://api-sepolia.etherscan.io/api?module=contract&action=getabi&address={contract_address}&apikey={ETHERSCAN_API_KEY}'
@@ -26,6 +26,8 @@ etherscan_content = etherscan_response.json()
 contract_abi = etherscan_content.get("result")
 contract_abi_dict = json.loads(contract_abi)
 print(f"ABI: {contract_abi}")
+
+users = set()
 
 # Event name extraction
 for i, j in enumerate(contract_abi_dict):
@@ -50,6 +52,14 @@ def handle_events(event):
                 # If the event name picked from events list matches the event name emited. It will successfully store the information in "result"
                 # variable and print it out.
                 print(f"Result from event {events[x]}: {result[0]['args']}")
+                if events[x] == 'Deposit':
+                    # Should add user to the list where users are stored
+                    users.add(result[0]['args']['user'])
+                if events[x] == 'Withdraw':
+                    # Should remove user from the list where users are stored if his deposit amount is equal to 0
+                    amount = contract.functions.lockedBalances(Web3.to_checksum_address(result[0]['args']['user'])).call()
+                    if amount == 0:
+                        users.remove(result[0]['args']['user'])
                 break
             except IndexError as e:
                 # If the event name picked from events list missmatched the event name actually emited, no content will be stored into the "result"
@@ -80,7 +90,7 @@ def log_loop(event_filter):
 async def get_event():
     global block_filter
     # Initiates the connection between your dapp and the network
-    async with connect("infura_url") as ws:
+    async with connect("wss://sepolia.infura.io/ws/v3/" + INFURA_KEY) as ws:
         await ws.send(json.dumps({"id": 1, "method": "eth_subscribe", "params": ["logs", {"address": [f'{contract_address}']}]}))
         # Wait for the subscription completion.
         subscription_response = await ws.recv()
