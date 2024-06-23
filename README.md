@@ -17,6 +17,12 @@ There are 3 contracts in total, they are in [/contracts](./contracts/) folders. 
 
 Backend part of project is in [/backend](./backend/) folder.
 
+Backend is listening contract 2 contracts events:
+
+- Deposit
+- Withdraw
+
+in case if user has deposit, backend should mint WIN tokens to user account.
 
 ## Further improvements
 
