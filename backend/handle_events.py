@@ -12,6 +12,8 @@ load_dotenv()
 INFURA_KEY = os.getenv('INFURA_KEY')
 AIRVAULT_ADDRESS = os.getenv('AIRVAULT_ADDRESS')
 ETHERSCAN_API_KEY = os.getenv('ETHERSCAN_API_KEY')
+BACKEND_PRIVATE_KEY = os.getenv('BACKEND_PRIVATE_KEY')
+BLOCK_INTERVAL = os.getenv('BLOCK_INTERVAL')
 
 # add your blockchain connection information
 events = []
@@ -28,6 +30,8 @@ contract_abi_dict = json.loads(contract_abi)
 print(f"ABI: {contract_abi}")
 
 users = set()
+
+users_rewards = {}
 
 # Event name extraction
 for i, j in enumerate(contract_abi_dict):
@@ -55,6 +59,7 @@ def handle_events(event):
                 if events[x] == 'Deposit':
                     # Should add user to the list where users are stored
                     users.add(result[0]['args']['user'])
+                    # TDDO add data about user to users_rewards
                 if events[x] == 'Withdraw':
                     # Should remove user from the list where users are stored if his deposit amount is equal to 0
                     amount = contract.functions.lockedBalances(Web3.to_checksum_address(result[0]['args']['user'])).call()
@@ -106,6 +111,31 @@ async def get_event():
             except ValueError as e:
                 print(e)
 
+def deposit_reward():
+    block = Web3.eth.get_block('latest')
+    for user in users:
+        if users_rewards[user]['last_block_rewarded'] + BLOCK_INTERVAL < block['number']:
+            amount = contract.functions.lockedBalances(Web3.to_checksum_address(user)).call()
+            # How reward should be calculated according to the tests in 
+            
+
+def calculate_reward(user, blockNumber):
+    #     uint256 amountDeposited = airVault.lockedBalances(user);
+    #     uint256 roundedBlocksPassed = ((block.number - lastBlockDeposited) /
+    #         airVault.rewardInterval()) * airVault.rewardInterval();
+    #     uint256 reward = (((amountXBlock +
+    #         amountDeposited *
+    #         roundedBlocksPassed) / airVault.rewardInterval()) *
+    #         airVault.rewardPercent()) / airVault.PRECISION();
+    (amountXBlock, lastBlockDeposited) = contract.functions.getRewardData(Web3.to_checksum_address(user)).call()
+    amountDeposited = contract.functions.lockedBalances(Web3.to_checksum_address(user)).call()
+    roundedBlocksPassed = ((blockNumber - lastBlockDeposited) / BLOCK_INTERVAL) * BLOCK_INTERVAL
+
+
+
+
+
 if __name__ == "__main__":
     loop = asyncio.new_event_loop()
     loop.run_until_complete(get_event())
+    loop.run_forever(deposit_reward())
